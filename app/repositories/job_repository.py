@@ -3,7 +3,10 @@ from app.models.job import Job
 class JobRepository:
     def __init__(self, db):
         self.db = db
-
+        
+    def get_jobs(self):
+        return self.db.query(Job).all()
+    
     def get_job_by_id(self, job_id):
         return self.db.query(Job).filter(Job.id == job_id).first()
 
@@ -29,3 +32,12 @@ class JobRepository:
             self.db.commit()
             return True
         return False
+
+    def update_job_status(self, job_id, status):
+            job = self.get_job_by_id(job_id)
+            if job:
+                job.status = status
+                self.db.commit()
+                return job
+            return None
+        

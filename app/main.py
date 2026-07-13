@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from app.schemas.job import JobCreate ,JobUpdate
-from app.services import job_services
 from app.models.job import Job
 from app.models.execution import Execution
 from app.models.logs import Log
@@ -18,10 +17,7 @@ def root():
     return {"message":"Job runner API"}
 
 @app.post("/jobs")
-def create_job(
-    job: JobCreate,
-    service: JobService = Depends(get_job_service)
-):
+def create_job(job: JobCreate,service: JobService = Depends(get_job_service)):
     return service.create_job(job)
 
 @app.put("/jobs/{job_id}")
@@ -33,5 +29,21 @@ def update_job(
     return service.update_job(job_id, job_data)
 
 @app.get("/jobs")
-def get_jobs():
-    return job_services.jobs
+def get_jobs(service: JobService = Depends(get_job_service)):
+    return service.get_jobs()
+
+@app.get("/jobs/{job_id}")
+def get_job(job_id: int, service: JobService = Depends(get_job_service)):
+    return service.get_job_by_id(job_id)
+
+@app.delete("/jobs/{job_id}")
+def delete_job(job_id: int, service: JobService = Depends(get_job_service)):
+    return service.delete_job(job_id)
+
+@app.patch("/jobs/{job_id}/status")
+def update_job_status(
+    job_id: int,
+    status: str,
+    service: JobService = Depends(get_job_service)
+):
+    return service.update_job_status(job_id, status)
