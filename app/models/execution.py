@@ -19,4 +19,4 @@ class Execution(Base):
     error_message = Column(String)
 
     job = relationship("Job", back_populates="executions")
-    logs = relationship("Log", back_populates="execution")
+    logs = relationship("Log", back_populates="executions")

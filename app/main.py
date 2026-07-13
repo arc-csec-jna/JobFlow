@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from app.schemas.job import JobCreate ,JobUpdate
 from app.models.job import Job
 from app.models.execution import Execution
@@ -47,3 +47,8 @@ def update_job_status(
     service: JobService = Depends(get_job_service)
 ):
     return service.update_job_status(job_id, status)
+
+# ===================================================================================================================
+@app.post("/jobs/{job_id}/run")
+def run_job(job_id: int, service: JobService = Depends(get_job_service)):
+    return service.run_job(job_id)
