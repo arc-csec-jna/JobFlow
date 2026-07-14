@@ -1,16 +1,21 @@
+from datetime import datetime
 from pydantic import BaseModel
 
 
 class ExecutionCreate(BaseModel):
-    job_id: int
     status: str
-    result: str = None
 
 class ExecutionUpdate(BaseModel):
-    result: str = None
+    status: str = None
 
-class Execution(ExecutionCreate):
+class ExecutionResponse(BaseModel):
     id: int
-
+    job_id: int
+    status: str
+    attempt_number: int
+    started_at: datetime | None
+    finished_at: datetime | None
+    error_message: str | None
     class Config:
         from_attributes = True
+

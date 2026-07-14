@@ -11,4 +11,14 @@ class JobUpdate(BaseModel):
     job_type: str | None = None
     payload: dict | None = None
     status: str | None = None
-    
+
+
+class JobResponse(BaseModel):
+    id: int
+    title: str
+    job_type: str
+    payload: dict
+    status: str
+
+    class Config:
+        from_attributes = True
