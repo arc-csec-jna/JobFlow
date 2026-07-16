@@ -10,6 +10,7 @@ from app.repositories.log_repository import LogRepository
 from app.schemas import job
 from app.schemas.job import JobCreate
 from datetime import datetime
+from app.executors.python_executor import PythonExecutor
 import time
 
 class JobService:
@@ -78,39 +79,37 @@ class JobService:
 # ===================================================================================================================
 #ORCHESTRATION SERVICE
     def run_job(self, job_id):
-        execution_succeeded = True
         # Find the Job
         job = self.get_job_by_id(job_id)
         # Check business logic
         if job.status == "RUNNING":
             raise HTTPException(status_code=400, detail="Job is already running")
-         
         # create an execution record
         execution = Execution(job_id = job.id, status = "RUNNING",started_at = datetime.now())
         execution_record = self.execution_repository.create_execution(execution)
-
         # Update the job status to "running"
         self.job_repository.update_job_status(job_id, "RUNNING")
-
         # Write execution started on logs
         self.log_repository.create_log(Log(execution_id=execution_record.id,level = "INFO", message=f"Job {job.id} started execution."))
         # Simulate job execution (this could be a call to an external service, a subprocess, etc.)
-        time.sleep(2)
-        self.execution_repository.update_execution(execution_record.id,{"status": "SUCCESS", "finished_at": datetime.now()})
-
-        self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO", message=f"Job {job.id} completed execution."))
-        if execution_succeeded:
+        #===================================================================================== EXECUTION LOGIC ==========================================================================================
+        python_executor = PythonExecutor()
+        execution_result = python_executor.execute(job)
+        #================================================================================================================================================================================================
+        if execution_result.status == "SUCCESS":
             execution_data_dict = {"status": "SUCCESS", "error_message": None, "finished_at": datetime.now()}
-
         else:
-            execution_data_dict = {"status": "FAILED", "error_message": "Job execution failed", "finished_at": datetime.now()}
+            execution_data_dict = {"status": "FAILED", "error_message": execution_result.message, "finished_at": datetime.now()}
         # Update execution to success or failure based on the result of the job execution
         self.execution_repository.update_execution(execution_record.id,execution_data_dict)
-
         # Update the job status to "completed" or "failed" based on the execution result
         self.job_repository.update_job_status(job_id, execution_data_dict["status"])
         # Write completion status on logs
-        self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO", message=f"Job {job.id} execution {execution_data_dict['status']}",timestamp = datetime.utcnow()))
+        self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO", message=f"Job {job.id} execution {execution_data_dict['status']}",timestamp = datetime.now()))
         # return execution
-        return {"message": f"Job {job.id} execution {execution_data_dict['status']}.", "execution_id": execution_record.id}
-    
+        message = (
+            f"Job {job.id} execution "
+            f"{execution_data_dict['status']} - "
+            f"{execution_result.message}"
+        )
+        return {"message": message, "execution_id": execution_record.id}
