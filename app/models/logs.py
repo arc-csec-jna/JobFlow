@@ -17,4 +17,4 @@ class Log(Base):
     message = Column(Text, nullable=False)
     timestamp = Column(DateTime,default=datetime.now)
 
-    execution = relationship("Execution", back_populates="logs")
+    executions = relationship("Execution", back_populates="logs")
