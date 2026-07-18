@@ -75,41 +75,75 @@ class JobService:
         return self.job_repository.update_job_status(job_id, status)
 
 
-
 # ===================================================================================================================
 #ORCHESTRATION SERVICE
     def run_job(self, job_id):
+
         # Find the Job
         job = self.get_job_by_id(job_id)
         # Check business logic
         if job.status == "RUNNING":
             raise HTTPException(status_code=400, detail="Job is already running")
-        # create an execution record
-        execution = Execution(job_id = job.id, status = "RUNNING",started_at = datetime.now())
-        execution_record = self.execution_repository.create_execution(execution)
+        max_attempts = 1 + job.max_retries
         # Update the job status to "running"
         self.job_repository.update_job_status(job_id, "RUNNING")
-        # Write execution started on logs
-        self.log_repository.create_log(Log(execution_id=execution_record.id,level = "INFO", message=f"Job {job.id} started execution."))
-        # Simulate job execution (this could be a call to an external service, a subprocess, etc.)
-        #===================================================================================== EXECUTION LOGIC ==========================================================================================
         python_executor = PythonExecutor()
-        execution_result = python_executor.execute(job)
+
+        #---------------------------------------------------------------------------------------- Attempt loop ------------------------------------------------------------------------------------
+        for attempt in range(1,max_attempts + 1):
+            # create an execution record object
+            execution = Execution(job_id = job.id, status = "RUNNING", started_at = datetime.now(), attempt_number = attempt)
+            execution_record = self.execution_repository.create_execution(execution)
+            # Write execution started on logs
+            self.log_repository.create_log(Log(execution_id=execution_record.id,level = "INFO", message=f"Job {job.id} attempt {attempt} started."))
+        #===================================================================================== EXECUTION LOGIC ==========================================================================================
+            execution_result = python_executor.execute(job)
         #================================================================================================================================================================================================
-        if execution_result.status == "SUCCESS":
-            execution_data_dict = {"status": "SUCCESS", "error_message": None, "finished_at": datetime.now()}
-        else:
-            execution_data_dict = {"status": "FAILED", "error_message": execution_result.message, "finished_at": datetime.now()}
-        # Update execution to success or failure based on the result of the job execution
-        self.execution_repository.update_execution(execution_record.id,execution_data_dict)
-        # Update the job status to "completed" or "failed" based on the execution result
-        self.job_repository.update_job_status(job_id, execution_data_dict["status"])
-        # Write completion status on logs
-        self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO", message=f"Job {job.id} execution {execution_data_dict['status']}",timestamp = datetime.now()))
-        # return execution
-        message = (
-            f"Job {job.id} execution "
-            f"{execution_data_dict['status']} - "
-            f"{execution_result.message}"
+            if execution_result.status == "SUCCESS":
+                self._complete_execution(execution_record,"SUCCESS",None,f"Job {job.id} attempt {attempt} SUCCESS",)
+                self.job_repository.update_job_status(job_id,"SUCCESS")
+                message = (f"Job {job.id} execution SUCCESS.")                
+                return {"message": message,"execution_id": execution_record.id}
+            else:
+                self._complete_execution(
+                execution_record,
+                "FAILED",
+                execution_result.message,
+                f"Job {job.id} attempt {attempt} FAILED",
+                )
+                if attempt < max_attempts:
+                    self.log_repository.create_log(
+                        Log(
+                            execution_id=execution_record.id,
+                            level="INFO",
+                            message=f"Retrying... ({attempt + 1}/{max_attempts})"
+                        )
+                    )
+                continue
+        #Max attempts reached
+        self.log_repository.create_log(
+            Log(
+                execution_id=execution_record.id,
+                level="ERROR",
+                message="Maximum retry attempts reached."
+            )
         )
-        return {"message": message, "execution_id": execution_record.id}
+        self.job_repository.update_job_status(job_id, "FAILED")
+        message = (f"Job {job.id} failed after {max_attempts} attempts.")
+
+        return {"message": message,"execution_id": execution_record.id}
+    
+    def _complete_execution(
+        self,
+        execution_record,
+        status,
+        error_message,
+        log_message,
+        ):
+        # Update execution to success or failure based on the result of the job execution
+        execution_data_dict = {"status": status, "error_message": error_message, "finished_at": datetime.now()}
+        # Update the job status to "completed" or "failed" based on the execution result
+        self.execution_repository.update_execution(execution_record.id,execution_data_dict)
+        # Write completion status on logs
+        self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO" if status == "SUCCESS" else "WARNING", message=log_message,timestamp = datetime.now()))
+                   

@@ -18,4 +18,4 @@ class PythonExecutor:
 
             return ExecutionResult(status="SUCCESS", message="Job executed successfully")
         except Exception as e:
-            return ExecutionResult(status="FAILURE", message=str(e))
+            return ExecutionResult(status="FAILED", message=str(e))
