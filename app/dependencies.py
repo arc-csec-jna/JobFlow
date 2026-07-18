@@ -9,7 +9,6 @@ from fastapi import Depends
 
 def get_job_service(db: Session = Depends(get_db)):
     job_repository = JobRepository(db)
-    print(ExecutionRepository)
     execution_repository = ExecutionRepository(db)
     log_repository = LogRepository(db)
     return JobService(job_repository=job_repository, execution_repository=execution_repository, log_repository=log_repository)
