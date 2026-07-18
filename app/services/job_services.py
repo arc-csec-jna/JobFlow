@@ -9,7 +9,7 @@ from app.repositories.ExecutionRepository import ExecutionRepository
 from app.repositories.log_repository import LogRepository
 from app.schemas import job
 from app.schemas.job import JobCreate
-from datetime import datetime
+from datetime import datetime,timedelta
 from app.executors.python_executor import PythonExecutor
 import time
 
@@ -19,7 +19,7 @@ class JobService:
         self.execution_repository = execution_repository
         self.log_repository = log_repository
 
-    def get_executions_by_execution_id(self, execution_id):
+    def get_executions_by_id(self, execution_id):
         execution = self.execution_repository.get_execution_by_id(execution_id)
         if not execution:
             raise HTTPException(status_code=404, detail="Execution not found")
@@ -48,6 +48,9 @@ class JobService:
             title=job_data.title,
             job_type = job_data.job_type,
             payload = job_data.payload,
+            schedule_interval_seconds=job_data.schedule_interval_seconds,
+            next_run_at=job_data.next_run_at,
+            enabled=job_data.enabled,
         )
         return self.job_repository.create_job(job)
 
@@ -73,8 +76,10 @@ class JobService:
     
     def update_job_status(self, job_id, status):
         return self.job_repository.update_job_status(job_id, status)
-
-
+        
+    def update_next_run(self,job,next_run):
+        return self.job_repository.update_next_run_at(job.id,next_run)
+         
 # ===================================================================================================================
 #ORCHESTRATION SERVICE
     def run_job(self, job_id):
@@ -103,6 +108,13 @@ class JobService:
                 self._complete_execution(execution_record,"SUCCESS",None,f"Job {job.id} attempt {attempt} SUCCESS",)
                 self.job_repository.update_job_status(job_id,"SUCCESS")
                 message = (f"Job {job.id} execution SUCCESS.")                
+                if job.enabled and job.schedule_interval_seconds: #checking interval and scheduled runs
+                    next_run = datetime.now() + timedelta(seconds=job.schedule_interval_seconds)
+                    print(
+                        f"Updating next_run_at from {job.next_run_at} "
+                        f"to {next_run}"
+                        )
+                    self.job_repository.update_next_run_at(job.id,next_run)        
                 return {"message": message,"execution_id": execution_record.id}
             else:
                 self._complete_execution(
@@ -146,4 +158,4 @@ class JobService:
         self.execution_repository.update_execution(execution_record.id,execution_data_dict)
         # Write completion status on logs
         self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO" if status == "SUCCESS" else "WARNING", message=log_message,timestamp = datetime.now()))
-                   
+       

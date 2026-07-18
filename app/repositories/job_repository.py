@@ -40,4 +40,13 @@ class JobRepository:
                 self.db.commit()
                 return job
             return None
-        
+    #poll the database for jobs runnable
+    def get_job_runnable(self,current_time):
+        return (
+            self.db.query(Job)
+            .filter(Job.next_run_at <= current_time)
+            .filter(Job.enabled == True)
+            .all()
+            )
+    def update_next_run_at(self,job_id,next_run_at):
+        return self.update_job(job_id,{"next_run_at":next_run_at})
