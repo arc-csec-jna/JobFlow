@@ -82,7 +82,7 @@ class JobService:
          
 # ===================================================================================================================
 #ORCHESTRATION SERVICE
-    def run_job(self, job_id):
+    def run_job(self, job_id, trigger = "MANUAL"):
 
         # Find the Job
         job = self.get_job_by_id(job_id)
@@ -100,7 +100,7 @@ class JobService:
             execution = Execution(job_id = job.id, status = "RUNNING", started_at = datetime.now(), attempt_number = attempt)
             execution_record = self.execution_repository.create_execution(execution)
             # Write execution started on logs
-            self.log_repository.create_log(Log(execution_id=execution_record.id,level = "INFO", message=f"Job {job.id} attempt {attempt} started."))
+            self.log_repository.create_log(Log(execution_id=execution_record.id,level = "INFO", message=f"Job {job.id} attempt {attempt} started. {trigger}"))
         #===================================================================================== EXECUTION LOGIC ==========================================================================================
             execution_result = python_executor.execute(job)
         #================================================================================================================================================================================================
