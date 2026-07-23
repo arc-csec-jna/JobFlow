@@ -46,7 +46,13 @@ class JobRepository:
             self.db.query(Job)
             .filter(Job.next_run_at <= current_time)
             .filter(Job.enabled == True)
+            .order_by(
+                Job.priority.desc(),
+                Job.next_run_at.asc(),
+                Job.id.asc()
+                )
             .all()
             )
+    
     def update_next_run_at(self,job_id,next_run_at):
         return self.update_job(job_id,{"next_run_at":next_run_at})
