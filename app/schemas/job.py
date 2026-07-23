@@ -1,5 +1,7 @@
+from typing import Literal
 from pydantic import BaseModel
 from datetime import datetime
+from app.enums import Priority
 # this is the schema for the job model it defines what my APIP sends and receives
 
 class JobCreate(BaseModel):
@@ -11,6 +13,7 @@ class JobCreate(BaseModel):
     schedule_interval_seconds: int | None = None
     next_run_at: datetime | None = None
     enabled: bool = True
+    priority: Literal["LOW","MEDIUM","HIGH"]
 
 class JobUpdate(BaseModel):
     title: str | None = None

@@ -12,6 +12,7 @@ from app.schemas.job import JobCreate
 from datetime import datetime,timedelta
 from app.executors.python_executor import PythonExecutor
 import time
+from app.enums import Priority
 
 class JobService:
     def __init__(self, job_repository: JobRepository, execution_repository: ExecutionRepository, log_repository: LogRepository):
@@ -51,6 +52,7 @@ class JobService:
             schedule_interval_seconds=job_data.schedule_interval_seconds,
             next_run_at=job_data.next_run_at,
             enabled=job_data.enabled,
+            priority=Priority[job_data.priority.upper()].value
         )
         return self.job_repository.create_job(job)
 

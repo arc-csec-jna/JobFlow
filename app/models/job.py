@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 from sqlalchemy.orm import relationship
 import time
+from app.enums import Priority
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -19,6 +20,7 @@ class Job(Base):
     schedule_interval_seconds = Column(Integer,nullable=True)
     next_run_at = Column(DateTime, nullable=True)
     enabled = Column(Boolean,default=True)
+    priority = Column(Integer,default=Priority.MEDIUM.value)
 
 #executions = relationship("Execution", backref="job", cascade="all, delete-orphan")
 
