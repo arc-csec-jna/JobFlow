@@ -5,6 +5,8 @@ from app.repositories.job_repository import JobRepository
 from app.services.job_services import JobService
 from datetime import datetime,timedelta
 import time
+from concurrent.futures import ThreadPoolExecutor
+from app.workers import worker
 
 class SchedulerService:
     def __init__(self, job_repository: JobRepository,job_service:JobService):
@@ -16,21 +18,20 @@ class SchedulerService:
         current_time =datetime.now()
         print("Checking for runnable jobs.")
         jobs = self.job_repository.get_job_runnable(current_time)
-        print(f"found {len(jobs)} runnable jobs.")
-        jobcnt = 0
-        for job in jobs:
-            print(
-                    f"Running Job {job.id} | "
-                    f"{job.title} | "
-                    f"next_run_at={job.next_run_at}"
-                )
-            jobcnt += 1
-            self.job_service.run_job(job.id,trigger = "SCHEDULER")
-        message = {
-            "jobs_found": len(jobs),
-            "jobs_executed":jobcnt
-            }
-        return message
+
+        print(f"found {len(jobs)} runnable jobs.")#<<<<<<<<<<<
+        with ThreadPoolExecutor(max_workers=4) as dispatcher:
+            futures = []
+            for job in jobs:
+                print(
+                        f"Dispatching Job {job.id} | {job.title}"
+                    )
+                futures.append(dispatcher.submit(worker.execute,job.id,"SCHEDULER"))
+            message = {
+                "jobs_found": len(jobs),
+                "jobs_executed":len(futures)
+                }
+            return message
     
     def start_scheduler(self,enabled=True):
         while enabled:
@@ -41,3 +42,4 @@ class SchedulerService:
                 )
             time.sleep(5)
 
+ 

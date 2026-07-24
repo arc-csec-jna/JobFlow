@@ -95,7 +95,6 @@ class JobService:
         # Update the job status to "running"
         self.job_repository.update_job_status(job_id, "RUNNING")
         python_executor = PythonExecutor()
-
         #---------------------------------------------------------------------------------------- Attempt loop ------------------------------------------------------------------------------------
         for attempt in range(1,max_attempts + 1):
             # create an execution record object
