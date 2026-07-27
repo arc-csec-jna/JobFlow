@@ -1,4 +1,4 @@
-from app.database import SessionLocal
+from app.core.database import SessionLocal
 from app.repositories.job_repository import JobRepository
 from app.repositories.ExecutionRepository import ExecutionRepository
 from app.repositories.log_repository import LogRepository

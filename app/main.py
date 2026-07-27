@@ -1,9 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from app.schemas.job import JobCreate ,JobUpdate
-from app.models.job import Job
-from app.models.execution import Execution
-from app.models.logs import Log
-from app.database import Base, engine
+from app.core.database import Base, engine
 from fastapi import Depends
 from app.services.job_services import JobService
 from app.dependencies import get_job_service

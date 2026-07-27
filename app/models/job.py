@@ -1,4 +1,4 @@
-from app.database import Base
+from app.core.database import Base
 from sqlalchemy import JSON, Column, Integer, String,DateTime,Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
