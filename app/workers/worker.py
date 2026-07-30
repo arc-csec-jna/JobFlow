@@ -3,6 +3,7 @@ from app.repositories.job_repository import JobRepository
 from app.repositories.ExecutionRepository import ExecutionRepository
 from app.repositories.log_repository import LogRepository
 from app.services.job_services import JobService
+from app.services.retry_policy import RetryPolicy
 import threading
 
 
@@ -15,7 +16,8 @@ def execute(job_id:int,trigger:str):
         job_repository = JobRepository(db)
         execution_repository = ExecutionRepository(db)
         log_repository = LogRepository(db)
-        job_service = JobService(job_repository=job_repository, execution_repository=execution_repository, log_repository=log_repository)
+        retry_policy = RetryPolicy()
+        job_service = JobService(job_repository=job_repository, execution_repository=execution_repository, log_repository=log_repository,retry_policy=retry_policy)
 
     
         print(f"Worker-{thread_name} executing Job number:{job_id}")
