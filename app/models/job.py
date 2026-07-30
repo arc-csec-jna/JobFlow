@@ -21,6 +21,7 @@ class Job(Base):
     next_run_at = Column(DateTime, nullable=True)
     enabled = Column(Boolean,default=True)
     priority = Column(Integer,default=Priority.MEDIUM.value)
+    retry_count = Column(Integer, default=0, nullable=False)
 
 #executions = relationship("Execution", backref="job", cascade="all, delete-orphan")
 
