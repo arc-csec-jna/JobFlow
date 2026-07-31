@@ -12,10 +12,13 @@ class PythonExecutor:
 
             # Retrieve the function from the registry
             task = TASK_REGISTRY.get(job_type)
+            print(f"job_type: {job_type}")
+            print(f"task: {task}")      
             if not task:
                 raise ValueError(f"Unknown job type :'{job_type}'")
+            
             task(**payload)
-
             return ExecutionResult(status="SUCCESS", message="Job executed successfully")
         except Exception as e:
+            print("exception raised")
             return ExecutionResult(status="FAILED", message=str(e))

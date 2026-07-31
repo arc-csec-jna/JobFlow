@@ -12,8 +12,8 @@ from app.schemas.job import JobCreate
 from datetime import datetime,timedelta
 from app.executors.python_executor import PythonExecutor
 from app.services.retry_policy import RetryPolicy
-import time
 from app.enums import Priority
+from app.enums.JobStatus import JobStatus
 from app.core.config import settings
 
 
@@ -79,7 +79,8 @@ class JobService:
             schedule_interval_seconds=job_data.schedule_interval_seconds,
             next_run_at=job_data.next_run_at,
             enabled=job_data.enabled,
-            priority=Priority[job_data.priority.upper()].value
+            priority=Priority[job_data.priority.upper()].value,
+            status=getattr(JobStatus,job_data.status.upper())
         )
         return self.job_repository.create_job(job)
 
@@ -117,14 +118,12 @@ class JobService:
 #ORCHESTRATION SERVICE
     def run_job(self, job_id, trigger = "MANUAL"):
 
-        start = self._prepare_execution(job_id,trigger)
-        try:
-            self._execute_task(start)
-            return self._handle_success(start)
-        except Exception as e:
-            return self._handle_failure(start,e)
-# ===================================================================================================================
-# RETRY POLICY
+        exec_ctx = self._prepare_execution(job_id,trigger)
+        exec_ctx.execution_result = self._execute_task(exec_ctx)
+        if exec_ctx.execution_result == "SUCCESS":
+            self._handle_success(exec_ctx)
+        else:
+            self._handle_failure(exec_ctx, exec_ctx.execution_result.message)
   
     def _complete_execution(
         self,
@@ -157,7 +156,8 @@ class JobService:
     
     def _execute_task(self,ctx):
         ctx.execution_result = ctx.executor.execute(ctx.job)
-         
+        
+        return ctx.execution_result
         
     def _handle_success(self,ctx):
         self._complete_execution(ctx.execution_record,"SUCCESS",None,f"Job {ctx.job.id} SUCCESS",)
@@ -171,18 +171,20 @@ class JobService:
                 )
                                     
             self.job_repository.update_next_run_at(ctx.job.id,next_run)
+            if ctx.job.retry_count > 0:
+                ctx.job.retry_count = 0
+                self.job_repository.update_retry_count(ctx.job.id,ctx.job.retry_count)
         return {
                 "message": f"Job {ctx.job.id} execution SUCCESS.",
                 "execution_id": ctx.execution_record.id,
                 }
     
     def _handle_failure(self,ctx,exception):
-
         self._complete_execution(
          ctx.execution_record,
         "FAILED",
         str(exception),
-        f"Job {ctx.job.id} FAILED",
+        f"Job {ctx.job.id} attempt FAILED",
         )
 
         if (self.retry_policy.should_retry(ctx.job)):
@@ -204,6 +206,15 @@ class JobService:
                         "execution_id": ctx.execution_record.id,
                     }
         else:
+            ctx.job.status = "FAILED"
+            ctx.job.enabled = False
+            jobdata = {"status":  ctx.job.status,"enabled":ctx.job.enabled,}
+            self.job_repository.update_job(ctx.job.id,jobdata)       
+            print(
+                    f"maximum retry attempts reach for {ctx.job.id}"
+                )
+            
+            self.job_repository.update_job
             return {
                     "message": f"Job {ctx.job.id} execution permanent Failure.",
                     "execution_id": ctx.execution_record.id,
