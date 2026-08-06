@@ -120,7 +120,7 @@ class JobService:
 
         exec_ctx = self._prepare_execution(job_id,trigger)
         exec_ctx.execution_result = self._execute_task(exec_ctx)
-        if exec_ctx.execution_result == "SUCCESS":
+        if exec_ctx.execution_result.status == "SUCCESS":
             self._handle_success(exec_ctx)
         else:
             self._handle_failure(exec_ctx, exec_ctx.execution_result.message)
@@ -139,15 +139,18 @@ class JobService:
         # Write completion status on logs
         self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO" if status == "SUCCESS" else "WARNING", message=log_message,timestamp = datetime.now()))
 
-    def _prepare_execution(self, job_id,trigger):
-            job = self.get_job_by_id(job_id)
+    def _prepare_execution(self, job_id,trigger): #<< this is where I create the execution context and check if the job is already running
+            job = self.get_job_by_id(job_id) 
             if job.status == "RUNNING":
                         raise HTTPException(status_code=400, detail="Job is already running")
             self.job_repository.update_job_status(job_id, "RUNNING")
             python_executor = PythonExecutor()
-            execution = Execution(job_id = job.id, status = "RUNNING", started_at = datetime.now())
+            #create another execution instance indicating how many times the job has been retried and the attempt number
+            execution = Execution(job_id = job.id, status = "RUNNING", started_at = datetime.now(), attempt_number = job.retry_count + 1)
+            print(f"Attempt number: {execution.attempt_number}")
             execution_record = self.execution_repository.create_execution(execution)
             self.log_repository.create_log(Log(execution_id=execution_record.id,level = "INFO", message=f"Job {job.id} started. {trigger}"))
+            
             return ExecutionContext(
                 job = job,
                 executor=python_executor,
@@ -179,11 +182,11 @@ class JobService:
                 "execution_id": ctx.execution_record.id,
                 }
     
-    def _handle_failure(self,ctx,exception):
+    def _handle_failure(self,ctx,error_message):
         self._complete_execution(
          ctx.execution_record,
         "FAILED",
-        str(exception),
+        error_message,
         f"Job {ctx.job.id} attempt FAILED",
         )
 
