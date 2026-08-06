@@ -3,6 +3,7 @@ from app.tasks.db_backup import db_backup
 from app.tasks.email import email_notification_task
 from app.tasks.report_generation import report_generation_task
 from app.tasks.heatlh_check import health_check_task
+from app.tasks.failing_task import failing_task
 
 
 TASK_REGISTRY = {
@@ -11,4 +12,5 @@ TASK_REGISTRY = {
     "email_notification": email_notification_task,
     "report_generation": report_generation_task,
     "health_check": health_check_task,
+    "fail": failing_task
 }

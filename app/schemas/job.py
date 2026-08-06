@@ -9,11 +9,11 @@ class JobCreate(BaseModel):
     job_type: str
     payload: dict
     max_retries: int
-
     schedule_interval_seconds: int | None = None
     next_run_at: datetime | None = None
     enabled: bool = True
     priority: Literal["LOW","MEDIUM","HIGH"]
+    status:Literal["PENDING","RUNNING","SUCCESS","FAILED"]
 
 class JobUpdate(BaseModel):
     title: str | None = None

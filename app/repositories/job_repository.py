@@ -56,3 +56,6 @@ class JobRepository:
     
     def update_next_run_at(self,job_id,next_run_at):
         return self.update_job(job_id,{"next_run_at":next_run_at})
+
+    def update_retry_count(self,job_id,retry_count):
+        return self.update_job(job_id,{"retry_count":retry_count})
