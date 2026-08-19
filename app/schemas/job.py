@@ -29,5 +29,5 @@ class JobResponse(BaseModel):
     payload: dict
     status: str
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
