@@ -41,7 +41,7 @@ class JobService:
             execution_repository: ExecutionRepository,
             log_repository: LogRepository,
             retry_policy,
-            executor,
+            executor:PythonExecutor,
             ):
         self.job_repository = job_repository
         self.execution_repository = execution_repository
