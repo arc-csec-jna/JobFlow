@@ -108,3 +108,61 @@ def test_update_job(db_session):
     preset_id = response.json()["id"]
     assert update.status_code == 200
     assert  update_job_id == preset_id
+
+
+def test_update_job_status(db_session):
+    def override_get_db():
+        yield db_session
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.post("/jobs",
+                            json={
+                                "title": "Test API Job",
+                                "job_type": "dummy",
+                                "payload": {},
+                                "max_retries": 3,
+                                "priority": "MEDIUM",
+                                "status": "PENDING", 
+                            })
+    #update the created job status
+    job_id = response.json()["id"]
+    update_status = client.patch(f"/jobs/{job_id}/status",params={"status": "SUCCESS"})
+    
+    job = db_session.query(Job).filter(Job.id == job_id).first()
+    body = update_status.json()
+
+    assert update_status.status_code == 200
+    assert job_id == job.id
+    assert job.status == "SUCCESS"
+
+
+def test_delete_job(db_session):
+    def override_get_db():
+        yield db_session
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.post("/jobs",
+                                json={
+                                    "title": "Test API Job",
+                                    "job_type": "dummy",
+                                    "payload": {},
+                                    "max_retries": 3,
+                                    "priority": "MEDIUM",
+                                    "status": "PENDING", 
+                                })
+    #try and delete the job and see the returns
+    job_id = response.json()["id"]
+    delete = client.delete(f"/jobs/{job_id}")
+   # print(delete.json())
+    job = db_session.query(Job).filter(Job.id == job_id).first()
+
+    assert delete.status_code == 200
+    assert job is None
+    assert delete.json()["message"] == "Job deleted successfully"
+
+def test_delete_nonexistent_job(db_session):
+    def override_get_db():
+           yield db_session
+    app.dependency_overrides[get_db] = override_get_db 
+    response = client.delete("/jobs/99999")
+
+    assert response.status_code == 404
+     
