@@ -7,10 +7,10 @@ from app.workers import worker
 from app.core.config import settings
 
 class SchedulerService:
-    def __init__(self, job_repository: JobRepository,job_service:JobService):
+    def __init__(self, job_repository: JobRepository,job_service:JobService,dispatcher=None):
         self.job_repository = job_repository
         self.job_service = job_service
-        self.dispatcher = ThreadPoolExecutor(max_workers=settings.MAX_WORKERS)
+        self.dispatcher = dispatcher or ThreadPoolExecutor(max_workers=settings.MAX_WORKERS)
         self.shutdown_requested = False
 
     #run the jobs collectedfor scheduling on the database
@@ -35,7 +35,6 @@ class SchedulerService:
     def start_scheduler(self):
         try:
             while not self.shutdown_requested:
-           # while settings.SCHEDULER_ENABLED:
                 stats= self.run_pending_job()
                 print(  f"[Scheduler] Cycle complete | "
                     f"Found: {stats['jobs_found']} | "

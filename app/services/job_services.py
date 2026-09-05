@@ -41,11 +41,13 @@ class JobService:
             execution_repository: ExecutionRepository,
             log_repository: LogRepository,
             retry_policy,
+            executor:PythonExecutor,
             ):
         self.job_repository = job_repository
         self.execution_repository = execution_repository
         self.log_repository = log_repository
         self.retry_policy = retry_policy
+        self.executor = executor
 
     def get_executions_by_id(self, execution_id):
         execution = self.execution_repository.get_execution_by_id(execution_id)
@@ -144,8 +146,8 @@ class JobService:
             if job.status == "RUNNING":
                         raise HTTPException(status_code=400, detail="Job is already running")
             self.job_repository.update_job_status(job_id, "RUNNING")
-            python_executor = PythonExecutor()
-            #create another execution instance indicating how many times the job has been retried and the attempt number
+            executor = self.executor
+        #create another execution instance indicating how many times the job has been retried and the attempt number
             execution = Execution(job_id = job.id, status = "RUNNING", started_at = datetime.now(), attempt_number = job.retry_count + 1)
             print(f"Attempt number: {execution.attempt_number}")
             execution_record = self.execution_repository.create_execution(execution)
@@ -153,7 +155,7 @@ class JobService:
             
             return ExecutionContext(
                 job = job,
-                executor=python_executor,
+                executor=self.executor,
                 execution_record=execution_record
             )
     
