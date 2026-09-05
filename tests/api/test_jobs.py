@@ -4,6 +4,7 @@ from app.core.database import get_db
 from app.services.job_services import JobService
 from sqlalchemy.orm import Session
 from app.models.job import Job
+from app.models.execution import Execution  
 #API > JobCreate > get Job service >  get_db() > JobService > Job Repo > PostgreSQL DB
 
 
@@ -23,7 +24,6 @@ def test_create_job(db_session):
                                 "status": "PENDING", 
                               })
     job = db_session.query(Job).filter(Job.id == response.json()["id"]).first()
-    print("JOB ID:",job.id)
     assert response.status_code == 200
     assert job is not None
     #assert job.title == response["title"]
@@ -78,8 +78,6 @@ def test_jobs_found(db_session):
     response_getjobs = client.get("/jobs")
     jobs = response_getjobs.json()
     job_id = response.json()["id"]
-    print(jobs)
-    print(job_id)
     assert any(job["id"] == job_id for job in jobs)
     assert response_getjobs.status_code == 200
 
@@ -104,7 +102,6 @@ def test_update_job(db_session):
                         )
     job = db_session.query(Job).filter(Job.id == job_id).first()
     update_job_id = job.id
-    #print(update_job_id)
     preset_id = response.json()["id"]
     assert update.status_code == 200
     assert  update_job_id == preset_id
@@ -151,7 +148,6 @@ def test_delete_job(db_session):
     #try and delete the job and see the returns
     job_id = response.json()["id"]
     delete = client.delete(f"/jobs/{job_id}")
-   # print(delete.json())
     job = db_session.query(Job).filter(Job.id == job_id).first()
 
     assert delete.status_code == 200
@@ -163,6 +159,108 @@ def test_delete_nonexistent_job(db_session):
            yield db_session
     app.dependency_overrides[get_db] = override_get_db 
     response = client.delete("/jobs/99999")
-
     assert response.status_code == 404
-     
+
+def test_run_job_fail(db_session):
+        def override_get_db():
+            yield db_session
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.post("/jobs",
+                                json={
+                                    "title": "Test API Job",
+                                    "job_type": "fail",
+                                    "payload": {},
+                                    "max_retries": 3,
+                                    "priority": "MEDIUM",
+                                    "status": "PENDING", 
+                                })
+        job_id = response.json()["id"]
+        run_response = client.post(f"/jobs/{job_id}/run")
+        assert run_response.status_code == 200
+
+
+def test_run_job_success(db_session):
+        def override_get_db():
+            yield db_session
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.post("/jobs",
+                                json={
+                                    "title": "Test API Job",
+                                    "job_type": "cleanup",
+                                    "payload": {"directory": "/tmp/test", "days_old": 7},
+                                    "max_retries": 3,
+                                    "priority": "MEDIUM",
+                                    "status": "PENDING", 
+                                })
+        job_id = response.json()["id"]
+        run_response = client.post(f"/jobs/{job_id}/run")
+        execution = (
+             db_session.query(Execution).filter(Execution.job_id == job_id).first()
+        )
+
+        assert run_response.status_code == 200
+        assert execution is not None
+
+def test_get_job_executions_byjobid(db_session):
+        def override_get_db():
+            yield db_session
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.post("/jobs",
+                                json={
+                                    "title": "Test API Job",
+                                    "job_type": "cleanup",
+                                    "payload": {"directory": "/tmp/test", "days_old": 7},
+                                    "max_retries": 3,
+                                    "priority": "MEDIUM",
+                                    "status": "PENDING", 
+                                })
+        job_id = response.json()["id"]
+        run_response = client.post(f"/jobs/{job_id}/run")
+        executions_response = client.get(f"/jobs/{job_id}/executions")
+
+        assert executions_response.status_code == 200
+        assert len(executions_response.json()) > 0
+
+def test_get_execution_logs_by_executionid(db_session):
+        def override_get_db():
+            yield db_session
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.post("/jobs",
+                                json={
+                                    "title": "Test API Job",
+                                    "job_type": "cleanup",
+                                    "payload": {"directory": "/tmp/test", "days_old": 7},
+                                    "max_retries": 3,
+                                    "priority": "MEDIUM",
+                                    "status": "PENDING", 
+                                })
+        job_id = response.json()["id"]
+        run_response = client.post(f"/jobs/{job_id}/run")
+        execution = (
+             db_session.query(Execution).filter(Execution.job_id == job_id).first()
+        )
+        execution_id = execution.id
+        logs_response = client.get(f"/executions/{execution_id}/logs")
+
+        assert logs_response is not None
+        assert logs_response.status_code == 200
+
+def test_get_execution_Job_notexists(db_session):
+        def override_get_db():
+            yield db_session
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.get("/jobs/99999/executions")
+        assert response.status_code == 404
+
+def test_get_execution_logs_notexists(db_session):
+        def override_get_db():
+            yield db_session
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.get("/executions/99999/logs")
+        assert response.status_code == 404
+def test_get_execution_byid_notexists(db_session):
+        def override_get_db():
+            yield db_session
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.get("/executions/99999")
+        assert response.status_code == 404
