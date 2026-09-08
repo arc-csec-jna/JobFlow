@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException
-from app.schemas.job import JobCreate ,JobUpdate
+from app.schemas.job import JobCreate, JobResponse ,JobUpdate
 from app.core.database import Base, engine
 from fastapi import Depends
 from app.services.job_services import JobService
 from app.dependencies import get_job_service
+from app.enums.JobStatus import JobStatus
 
 Base.metadata.create_all(bind=engine)
 
@@ -13,11 +14,11 @@ app = FastAPI()
 def root():
     return {"message":"Job runner API"}
 
-@app.post("/jobs")
+@app.post("/jobs",response_model=JobResponse)
 def create_job(job: JobCreate,service: JobService = Depends(get_job_service)):
     return service.create_job(job)
 
-@app.put("/jobs/{job_id}")
+@app.put("/jobs/{job_id}",response_model=JobResponse)
 def update_job(
     job_id: int,
     job_data: JobUpdate,
@@ -25,11 +26,11 @@ def update_job(
 ):
     return service.update_job(job_id, job_data)
 
-@app.get("/jobs")
+@app.get("/jobs",response_model=list[JobResponse])
 def get_jobs(service: JobService = Depends(get_job_service)):
     return service.get_jobs()
 
-@app.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}",response_model=JobResponse)
 def get_job(job_id: int, service: JobService = Depends(get_job_service)):
     return service.get_job_by_id(job_id)
 
@@ -37,10 +38,10 @@ def get_job(job_id: int, service: JobService = Depends(get_job_service)):
 def delete_job(job_id: int, service: JobService = Depends(get_job_service)):
     return service.delete_job(job_id)
 
-@app.patch("/jobs/{job_id}/status")
+@app.patch("/jobs/{job_id}/status",response_model=JobResponse)
 def update_job_status(
     job_id: int,
-    status: str,
+    status: JobStatus,
     service: JobService = Depends(get_job_service)
 ):
     return service.update_job_status(job_id, status)
