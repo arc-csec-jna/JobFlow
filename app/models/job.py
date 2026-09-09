@@ -1,10 +1,12 @@
-from app.core.database import Base
-from sqlalchemy import JSON, Column, Integer, String,DateTime,Boolean
-from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
-import time
+
+from app.core.database import Base
 from app.enums import Priority
+
 
 class Job(Base):
     __tablename__ = "jobs"

@@ -1,5 +1,6 @@
 from app.services.scheduler_service import SchedulerService
-from tests.schedule_dummies import DummyJobRepository,DummyDispatcher,DummyJob
+from tests.schedule_dummies import DummyDispatcher, DummyJob, DummyJobRepository
+
 
 def test_ignore_disabled_jobs():
     job_repository = DummyJobRepository()

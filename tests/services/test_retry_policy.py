@@ -1,5 +1,6 @@
 from app.services.retry_policy import RetryPolicy
 
+
 class DummyJob:
     def __init__(self, retry_count,max_retries):
         self.retry_count = retry_count

@@ -1,7 +1,10 @@
-from typing import Literal
-from pydantic import BaseModel
 from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel
+
 from app.enums.JobStatus import JobStatus
+
 # this is the schema for the job model it defines what my APIP sends and receives
 
 class JobCreate(BaseModel):

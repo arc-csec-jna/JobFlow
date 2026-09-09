@@ -2,7 +2,7 @@
 
 
 class DummyJob:
-    def __init__(self, job_id, title, enabled=True,next_run_at=None,job_type="dummy", payload={},status="PENDING",schedule_interval_seconds=60,max_retries = 3,retry_count=0):
+    def __init__(self, job_id, title, enabled=True,next_run_at=None,job_type="dummy", payload=None,status="PENDING",schedule_interval_seconds=60,max_retries = 3,retry_count=0):
         self.id = job_id
         self.title = title
         self.enabled = enabled
@@ -14,6 +14,8 @@ class DummyJob:
         self.retry_count = retry_count
         self.status = status
         self.max_retries = max_retries
+        if payload is None:
+            self.payload = {}
 
 class DummyJobRepository:
     def __init__(self,job=None):

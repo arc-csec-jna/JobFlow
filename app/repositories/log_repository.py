@@ -1,5 +1,6 @@
 from app.models.logs import Log
 
+
 class LogRepository:
     def __init__(self, db):
         self.db = db

@@ -1,7 +1,7 @@
 import datetime
-from app.repositories.job_repository import JobRepository
-from app.models.job import Job
 
+from app.models.job import Job
+from app.repositories.job_repository import JobRepository
 
 
 def test_create_job(db_session):
@@ -20,7 +20,7 @@ def test_create_job(db_session):
 def test_get_job_runnable_return_religible(db_session):
     job_repo = JobRepository(db_session)
 
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
 
     due_job = Job(
         title="Due Job",
@@ -93,7 +93,7 @@ def test_update_next_run_at (db_session):
     db_session.add(job)
     db_session.commit()
 
-    updated_job = job_repo.update_next_run_at(job.id, datetime.datetime.utcnow())
+    updated_job = job_repo.update_next_run_at(job.id, datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(minutes=5))
 
     assert updated_job.next_run_at is not None
 

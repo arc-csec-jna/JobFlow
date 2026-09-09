@@ -1,10 +1,12 @@
-from app.repositories.job_repository import JobRepository
-from app.services.job_services import JobService
-from datetime import datetime
 import time
 from concurrent.futures import ThreadPoolExecutor
-from app.workers import worker
+from datetime import datetime, timezone
+
 from app.core.config import settings
+from app.repositories.job_repository import JobRepository
+from app.services.job_services import JobService
+from app.workers import worker
+
 
 class SchedulerService:
     def __init__(self, job_repository: JobRepository,job_service:JobService,dispatcher=None):
@@ -15,11 +17,10 @@ class SchedulerService:
 
     #run the jobs collectedfor scheduling on the database
     def run_pending_job(self) -> dict: 
-        current_time =datetime.now()
+        current_time =datetime.now(tz=timezone.utc)
         print("Checking for runnable jobs.")
         jobs = self.job_repository.get_job_runnable(current_time)
-
-        print(f"found {len(jobs)} runnable jobs.")#<<<<<<<<<<<
+        print(f"found {len(jobs)} runnable jobs.")
         futures = []
         for job in jobs:
             print(

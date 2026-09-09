@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException
-from app.schemas.job import JobCreate, JobResponse ,JobUpdate
+
+from fastapi import Depends, FastAPI, HTTPException
+
 from app.core.database import Base, engine
-from fastapi import Depends
-from app.services.job_services import JobService
 from app.dependencies import get_job_service
 from app.enums.JobStatus import JobStatus
+from app.schemas.job import JobCreate, JobResponse, JobUpdate
+from app.services.job_services import JobService
 
 Base.metadata.create_all(bind=engine)
 

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class LogCreate(BaseModel):
     execution_id: int
     level: str

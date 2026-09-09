@@ -1,20 +1,18 @@
-import datetime
+from datetime import datetime,timezone, timedelta
 
 from fastapi import HTTPException
+
+from app.core.config import settings
+from app.enums import Priority
+from app.enums.JobStatus import JobStatus
+from app.executors.python_executor import PythonExecutor
 from app.models.execution import Execution
 from app.models.job import Job
 from app.models.logs import Log
-from app.repositories.job_repository import JobRepository
 from app.repositories.ExecutionRepository import ExecutionRepository
+from app.repositories.job_repository import JobRepository
 from app.repositories.log_repository import LogRepository
-from app.schemas import job
 from app.schemas.job import JobCreate
-from datetime import datetime,timedelta
-from app.executors.python_executor import PythonExecutor
-from app.services.retry_policy import RetryPolicy
-from app.enums import Priority
-from app.enums.JobStatus import JobStatus
-from app.core.config import settings
 
 
 class ExecutionContext:
@@ -135,21 +133,19 @@ class JobService:
         log_message,
         ):
         # Update execution to success or failure based on the result of the job execution
-        execution_data_dict = {"status": status, "error_message": error_message, "finished_at": datetime.now()}
+        execution_data_dict = {"status": status, "error_message": error_message, "finished_at": datetime.now(tz=timezone.utc)}
         # Update the job status to "completed" or "failed" based on the execution result
         self.execution_repository.update_execution(execution_record.id,execution_data_dict)
         # Write completion status on logs
-        self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO" if status == "SUCCESS" else "WARNING", message=log_message,timestamp = datetime.now()))
+        self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO" if status == "SUCCESS" else "WARNING", message=log_message,timestamp = datetime.now(tz=timezone.utc)))
 
     def _prepare_execution(self, job_id,trigger): #<< this is where I create the execution context and check if the job is already running
             job = self.get_job_by_id(job_id) 
             if job.status == "RUNNING":
                         raise HTTPException(status_code=400, detail="Job is already running")
             self.job_repository.update_job_status(job_id, "RUNNING")
-            executor = self.executor
         #create another execution instance indicating how many times the job has been retried and the attempt number
-            execution = Execution(job_id = job.id, status = "RUNNING", started_at = datetime.now(), attempt_number = job.retry_count + 1)
-            print(f"Attempt number: {execution.attempt_number}")
+            execution = Execution(job_id = job.id, status = "RUNNING", started_at = datetime.now(tz=timezone.utc), attempt_number = job.retry_count + 1)
             execution_record = self.execution_repository.create_execution(execution)
             self.log_repository.create_log(Log(execution_id=execution_record.id,level = "INFO", message=f"Job {job.id} started. {trigger}"))
             
@@ -169,11 +165,7 @@ class JobService:
         self.job_repository.update_job_status(ctx.job.id,"SUCCESS")
                 
         if (ctx.job.enabled and ctx.job.schedule_interval_seconds): #checking interval and scheduled runs
-            next_run = datetime.now() + timedelta(seconds=ctx.job.schedule_interval_seconds)
-            print(
-                f"Updating next_run_at from {ctx.job.next_run_at} "
-                f"to {next_run}"
-                )
+            next_run = datetime.now(tz=timezone.utc) + timedelta(seconds=ctx.job.schedule_interval_seconds)
                                     
             self.job_repository.update_next_run_at(ctx.job.id,next_run)
             if ctx.job.retry_count > 0:
@@ -197,14 +189,10 @@ class JobService:
             ctx.job.status = "PENDING"
             if (ctx.job.enabled and ctx.job.schedule_interval_seconds): #checking interval and scheduled runs
                 old_next_run = ctx.job.next_run_at
-                next_run = datetime.now() + timedelta(seconds=settings.RETRY_DELAY_SECONDS)
+                next_run = datetime.now(tz=timezone.utc) + timedelta(seconds=settings.RETRY_DELAY_SECONDS)
                 ctx.job.retry_count +=1
                 self.job_repository.update_retry_count(ctx.job.id,ctx.job.retry_count)
                 self.job_repository.update_next_run_at(ctx.job.id,next_run)
-                print(
-                    f"Updating next_run_at from {old_next_run} "
-                    f"to {next_run}"
-                    )
                 ctx.job.next_run_at = next_run  
             return {
                         "message": f"Job {ctx.job.id} execution FAILED retry active.",
@@ -214,12 +202,7 @@ class JobService:
             ctx.job.status = "FAILED"
             ctx.job.enabled = False
             jobdata = {"status":  ctx.job.status,"enabled":ctx.job.enabled,}
-            self.job_repository.update_job(ctx.job.id,jobdata)       
-            print(
-                    f"maximum retry attempts reach for {ctx.job.id}"
-                )
-            
-            self.job_repository.update_job
+            self.job_repository.update_job(ctx.job.id,jobdata)
             return {
                     "message": f"Job {ctx.job.id} execution permanent Failure.",
                     "execution_id": ctx.execution_record.id,
