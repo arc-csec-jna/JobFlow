@@ -5,7 +5,9 @@ from app.executors.python_executor import PythonExecutor
 from app.repositories.ExecutionRepository import ExecutionRepository
 from app.repositories.job_repository import JobRepository
 from app.repositories.log_repository import LogRepository
+from app.repositories.UserRepository import UserRepository
 from app.services.job_services import JobService
+from app.services.UserService import UserService
 from app.services.retry_policy import RetryPolicy
 
 
@@ -16,3 +18,7 @@ def get_job_service(db: Session = Depends(get_db)):
     retry_policy= RetryPolicy()
     executor = PythonExecutor()
     return JobService(job_repository=job_repository, execution_repository=execution_repository, log_repository=log_repository,retry_policy=retry_policy,executor = executor)
+
+def get_user_service(db:Session=Depends(get_db)):
+    user_repository = UserRepository(db)
+    return UserService(user_repository=user_repository)

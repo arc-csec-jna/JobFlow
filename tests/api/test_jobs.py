@@ -18,7 +18,8 @@ def test_create_job(db_session):
                                 "payload": {},
                                 "max_retries": 3,
                                 "priority": "MEDIUM",
-                                "status": "PENDING", 
+                                "status": "PENDING",
+                                "user_id": 0,
                               })
     job = db_session.query(Job).filter(Job.id == response.json()["id"]).first()
     assert response.status_code == 200
@@ -34,7 +35,8 @@ def test_create_job_missing_title(db_session):
                             "payload": {},
                             "max_retries": 3,
                             "priority": "MEDIUM",
-                            "status": "PENDING", 
+                            "status": "PENDING",
+                            "user_id": 0,
                         })
     
     assert response.status_code == 422
@@ -54,6 +56,7 @@ def test_create_job_invalid_value(db_session):
                             "max_retries": 3,
                             "priority": "INVALID",
                             "status": "PENDING", 
+                            "user_id": 0,
                         })
     
     assert response.status_code == 422
@@ -72,6 +75,7 @@ def test_find_job_by_id(db_session):
                                    "max_retries": 3,
                                    "priority": "MEDIUM",
                                    "status": "PENDING", 
+                                   "user_id": 0
                                  })
 
     job_id = response.json()["id"]
@@ -105,7 +109,8 @@ def test_jobs_found(db_session):
                                    "payload": {},
                                    "max_retries": 3,
                                    "priority": "MEDIUM",
-                                   "status": "PENDING", 
+                                   "status": "PENDING",
+                                   "user_id": 0,
                                  })
     response_getjobs = client.get("/jobs")
     jobs = response_getjobs.json()
@@ -125,6 +130,7 @@ def test_update_job(db_session):
                                    "max_retries": 3,
                                    "priority": "MEDIUM",
                                    "status": "PENDING", 
+                                   "user_id": 0
                                  })
     job_id = response.json()["id"]
     update = client.put(f"/jobs/{job_id}",
@@ -151,6 +157,7 @@ def test_update_job_no_payload(db_session):
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
                                     "status": "PENDING", 
+                                    "user_id": 0,
                                     })
     job_id = response.json()["id"]
     update = client.put(f"/jobs/{job_id}",
@@ -177,6 +184,7 @@ def test_update_job_status(db_session):
                                 "max_retries": 3,
                                 "priority": "MEDIUM",
                                 "status": "PENDING", 
+                                "user_id": 0,
                             })
     #update the created job status
     job_id = response.json()["id"]
@@ -200,6 +208,7 @@ def test_update_job_status_invalid(db_session):
                                 "max_retries": 3,
                                 "priority": "MEDIUM",
                                 "status": "PENDING", 
+                                "user_id": 0,
                             })
     
     job_id = response.json()["id"]
@@ -218,6 +227,7 @@ def test_delete_job(db_session):
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
                                     "status": "PENDING", 
+                                    "user_id": 0,
                                 })
     job_id = response.json()["id"]
     delete = client.delete(f"/jobs/{job_id}")
@@ -248,6 +258,7 @@ def test_run_job_status_running(db_session):
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
                                     "status": "RUNNING", 
+                                    "user_id": 0,
                                 })
         job_id = response.json()["id"]
         run_response = client.post(f"/jobs/{job_id}/run")
@@ -266,6 +277,7 @@ def test_run_job_fail(db_session):
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
                                     "status": "PENDING", 
+                                    "user_id": 0,
                                 })
         job_id = response.json()["id"]
         run_response = client.post(f"/jobs/{job_id}/run")
@@ -284,6 +296,7 @@ def test_run_job_success(db_session):
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
                                     "status": "PENDING", 
+                                    "user_id": 0,
                                 })
         job_id = response.json()["id"]
         run_response = client.post(f"/jobs/{job_id}/run")
@@ -306,6 +319,7 @@ def test_get_job_executions_byjobid(db_session):
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
                                     "status": "PENDING", 
+                                    "user_id": 0,
                                 })
         job_id = response.json()["id"]
         client.post(f"/jobs/{job_id}/run")
@@ -326,6 +340,7 @@ def test_get_execution_logs_by_executionid(db_session):
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
                                     "status": "PENDING", 
+                                    "user_id": 0,
                                 })
         job_id = response.json()["id"]
         client.post(f"/jobs/{job_id}/run")
@@ -334,7 +349,6 @@ def test_get_execution_logs_by_executionid(db_session):
         )
         execution_id = execution.id
         logs_response = client.get(f"/executions/{execution_id}/logs")
-
         assert logs_response is not None
         assert logs_response.status_code == 200
 

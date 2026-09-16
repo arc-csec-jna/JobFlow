@@ -4,6 +4,11 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
 
+from app.models.job import Job
+from app.models.execution import Execution
+from app.models.logs import Log
+from app.models.User import User
+
 TEST_DATABASE_URL = (
     "postgresql+psycopg://postgres:password@localhost:5432/overseer_test"
 )
@@ -15,9 +20,21 @@ def db_session():
     # Create the database tables
     Base.metadata.create_all(bind=Testing_sessionLocal().bind)
     session = Testing_sessionLocal()
+
+    test_user = User(
+        id=0,
+        username="admin",
+        email="admin@example.com",
+        password_hash="PLACEHOLDER_HASH",
+        role="admin",
+        is_active=True,
+    )
+    
+    session.add(test_user)
+    session.commit()
+
     try:
         yield session
     finally:
         session.close()
         Base.metadata.drop_all(bind=Testing_sessionLocal().bind)
-        # Drop the database tables after tests are done

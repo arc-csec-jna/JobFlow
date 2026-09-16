@@ -11,13 +11,14 @@ def test_create_job(db_session):
     title="Disabled Job",
     job_type="database_backup",
     payload={},
+    user_id=0,
 )
     created_job = job_repo.create_job(job)
 
     assert created_job.id is not None
     assert created_job.title == "Disabled Job"
 
-def test_get_job_runnable_return_religible(db_session):
+def test_get_job_runnable_return_eligible(db_session):
     job_repo = JobRepository(db_session)
 
     now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -28,6 +29,7 @@ def test_get_job_runnable_return_religible(db_session):
         payload={},
         next_run_at=now - datetime.timedelta(minutes=1),
         enabled=True,
+        user_id=0,
     )
 
     disabled_job = Job(
@@ -36,6 +38,7 @@ def test_get_job_runnable_return_religible(db_session):
         payload={},
         next_run_at=now - datetime.timedelta(minutes=1),
         enabled=False,
+        user_id=0,
     )
 
     future_job = Job(
@@ -44,6 +47,7 @@ def test_get_job_runnable_return_religible(db_session):
         payload={},
         next_run_at=now + datetime.timedelta(minutes=1),
         enabled=True,
+        user_id=0,
     )
     unscheduled_job = Job(
         title="Unscheduled Job",
@@ -51,6 +55,7 @@ def test_get_job_runnable_return_religible(db_session):
         payload={},
         next_run_at=None,
         enabled=True,
+        user_id=0,
     )
 
     db_session.add_all([due_job, disabled_job, future_job, unscheduled_job])
@@ -73,6 +78,7 @@ def test_update_retry_count(db_session):
         job_type="database_backup",
         payload={},
         retry_count=0,
+        user_id=0,
     )
     db_session.add(job)
     db_session.commit()
@@ -89,6 +95,7 @@ def test_update_next_run_at (db_session):
         job_type="database_backup",
         payload={},
         retry_count=0,
+        user_id=0,
     )
     db_session.add(job)
     db_session.commit()
@@ -105,6 +112,7 @@ def test_update_job_status(db_session):
         job_type="database_backup",
         payload={},
         status="pending",
+        user_id=0,
     )
     db_session.add(job)
     db_session.commit()

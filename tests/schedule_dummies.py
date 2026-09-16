@@ -14,6 +14,8 @@ class DummyJob:
         self.retry_count = retry_count
         self.status = status
         self.max_retries = max_retries
+        self.user_id = 0  # Assign a default user_id for testing purposes
+        self.user = 'admin'  # Assign a default user object for testing purposes
         if payload is None:
             self.payload = {}
 

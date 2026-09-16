@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     SCHEDULER_ENABLED: bool=True
     RETRY_DELAY_SECONDS: int = 30
 
+    JWT_SECRET: str
+    
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

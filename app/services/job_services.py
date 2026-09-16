@@ -80,7 +80,8 @@ class JobService:
             next_run_at=job_data.next_run_at,
             enabled=job_data.enabled,
             priority=Priority[job_data.priority.upper()].value,
-            status=getattr(JobStatus,job_data.status.upper())
+            status=getattr(JobStatus,job_data.status.upper()),
+            user_id=job_data.user_id
         )
         return self.job_repository.create_job(job)
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -24,6 +24,8 @@ class Job(Base):
     enabled = Column(Boolean,default=True)
     priority = Column(Integer,default=Priority.MEDIUM.value)
     retry_count = Column(Integer, default=0, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False) 
+    user = relationship("User", back_populates="jobs") 
 
 #executions = relationship("Execution", backref="job", cascade="all, delete-orphan")
 
