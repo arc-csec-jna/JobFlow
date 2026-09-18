@@ -10,6 +10,9 @@ from app.services.job_services import JobService
 from app.services.UserService import UserService
 from app.services.retry_policy import RetryPolicy
 
+from app.security.token import decode_access_token
+from app.core.config import settings
+from app.security.oauth2 import oauth2_scheme
 
 def get_job_service(db: Session = Depends(get_db)):
     job_repository = JobRepository(db)
@@ -22,3 +25,15 @@ def get_job_service(db: Session = Depends(get_db)):
 def get_user_service(db:Session=Depends(get_db)):
     user_repository = UserRepository(db)
     return UserService(user_repository=user_repository)
+
+def get_current_user(
+                auth:str = Depends(oauth2_scheme),
+                db:Session = Depends(get_db)
+                ):
+    payload = decode_access_token(auth,settings.JWT_SECRET)
+    user_id = payload["user_id"]
+
+    user_repository = UserRepository(db)
+    user = user_repository.get_user_by_id(user_id)
+
+    return user

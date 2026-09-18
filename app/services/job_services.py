@@ -53,10 +53,14 @@ class JobService:
             raise HTTPException(status_code=404, detail="Execution not found")
         return execution
     
-    def get_executions_by_job_id(self, job_id):
+    def get_executions_by_job_id(self, job_id,user_id):
         job = self.job_repository.get_job_by_id(job_id)
+
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
+        if job.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        
         return self.execution_repository.get_executions_by_job_id(job_id)
     
     def get_logs_by_execution_id(self, execution_id):
@@ -65,13 +69,15 @@ class JobService:
             raise HTTPException(status_code=404, detail="Execution not found")
         return self.log_repository.get_logs_by_execution_id(execution_id)
     
-    def get_job_by_id(self, job_id):
+    def get_job_by_id(self, job_id,user_id):
         job = self.job_repository.get_job_by_id(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
+        if job.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Job not found")
         return job
 
-    def create_job(self, job_data:JobCreate):
+    def create_job(self, job_data:JobCreate,user_id):
         job  = Job(
             title=job_data.title,
             job_type = job_data.job_type,
@@ -81,32 +87,53 @@ class JobService:
             enabled=job_data.enabled,
             priority=Priority[job_data.priority.upper()].value,
             status=getattr(JobStatus,job_data.status.upper()),
-            user_id=job_data.user_id
+            user_id=user_id
         )
         return self.job_repository.create_job(job)
 
-    def update_job(self, job_id, job_data):
+    def update_job(self, job_id, user_id, job_data):
+        verify= self.job_repository.get_job_by_id(job_id)
+        if not verify:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if verify.user_id != user_id:
+            raise HTTPException(status_code=403, detail="not authorized")
         job_data_dict = job_data.model_dump(exclude_unset=True)
         job = self.job_repository.update_job(job_id, job_data_dict)
 
         if not job:
             raise HTTPException(
                 status_code=404,
-                detail="Job not found"
+                detail="Job update failed"
             )
         return job
 
-    def delete_job(self, job_id):
+    def delete_job(self, job_id,user_id):
+
+        verify= self.job_repository.get_job_by_id(job_id)
+
+        if not verify:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if verify.user_id != user_id:
+            raise HTTPException(status_code=403, detail="not authorized")
+        
         success = self.job_repository.delete_job(job_id)
+
         if not success:
             raise HTTPException(status_code=404, detail="Job not found")
         return {"message": "Job deleted successfully"}
     
-    def get_jobs(self):
-        return self.job_repository.get_jobs()
+    def get_jobs(self,user_id):
+        return self.job_repository.get_jobs(user_id)
     
-    def update_job_status(self, job_id, status):
-        return self.job_repository.update_job_status(job_id, status)
+    def update_job_status(self, job_id,user_id, status):
+        verify= self.job_repository.get_job_by_id(job_id)
+        if not verify:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if verify.user_id != user_id:
+            raise HTTPException(status_code=403, detail="not authorized")
+        update = self.job_repository.update_job_status(job_id, status)
+        return update
+          
         
     def update_next_run(self,job,next_run):
         return self.job_repository.update_next_run_at(job.id,next_run)
@@ -117,9 +144,9 @@ class JobService:
 
 # ===================================================================================================================
 #ORCHESTRATION SERVICE
-    def run_job(self, job_id, trigger = "MANUAL"):
+    def run_job(self, job_id, user_id, trigger = "MANUAL"):
 
-        exec_ctx = self._prepare_execution(job_id,trigger)
+        exec_ctx = self._prepare_execution(job_id, user_id,trigger)
         exec_ctx.execution_result = self._execute_task(exec_ctx)
         if exec_ctx.execution_result.status == "SUCCESS":
             self._handle_success(exec_ctx)
@@ -140,8 +167,12 @@ class JobService:
         # Write completion status on logs
         self.log_repository.create_log(Log(execution_id=execution_record.id, level = "INFO" if status == "SUCCESS" else "WARNING", message=log_message,timestamp = datetime.now(tz=timezone.utc)))
 
-    def _prepare_execution(self, job_id,trigger): #<< this is where I create the execution context and check if the job is already running
-            job = self.get_job_by_id(job_id) 
+    def _prepare_execution(self, job_id, user_id, trigger): #<< this is where I create the execution context and check if the job is already running
+            job = self.get_job_by_id(job_id,user_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Job not found")
+            if job.user_id != user_id:
+                raise HTTPException(status_code=403, detail="Not authorized")
             if job.status == "RUNNING":
                         raise HTTPException(status_code=400, detail="Job is already running")
             self.job_repository.update_job_status(job_id, "RUNNING")
@@ -186,7 +217,7 @@ class JobService:
         )
 
         if (self.retry_policy.should_retry(ctx.job)):
-            self.update_job_status(ctx.job.id,"PENDING")
+            self.update_job_status(ctx.job.id,ctx.job.user_id,"PENDING")
             ctx.job.status = "PENDING"
             if (ctx.job.enabled and ctx.job.schedule_interval_seconds): #checking interval and scheduled runs
                 old_next_run = ctx.job.next_run_at

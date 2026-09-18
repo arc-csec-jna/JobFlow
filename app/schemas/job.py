@@ -17,7 +17,6 @@ class JobCreate(BaseModel):
     enabled: bool = True
     priority: Literal["LOW","MEDIUM","HIGH"]
     status:Literal["PENDING","RUNNING","SUCCESS","FAILED"]
-    user_id: int
 
 class JobUpdate(BaseModel):
     title: str | None = None
