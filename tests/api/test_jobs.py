@@ -1,19 +1,43 @@
 from fastapi.testclient import TestClient
-from app.main import app
-from app.core.database import get_db
-from app.services.job_services import JobService
-from sqlalchemy.orm import Session
-from app.models.job import Job
-from app.models.execution import Execution  
-#API > JobCreate > get Job service >  get_db() > JobService > Job Repo > PostgreSQL DB
 
+from app.core.database import get_db
+from app.dependencies import get_current_user
+from app.main import app
+from app.models.execution import Execution
+from app.models.job import Job
+from app.models.User import User
+from tests.security.DummySecurity import DummyUser
+from datetime import datetime, timezone
+from tests.schedule_dummies import DummyJob
 
 client = TestClient(app)
 
 def test_create_job(db_session):
     def override_get_db():
         yield db_session
+
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
     app.dependency_overrides[get_db] = override_get_db
+
     response = client.post("/jobs",
                            json={
                                 "title": "Test API Job",
@@ -21,16 +45,72 @@ def test_create_job(db_session):
                                 "payload": {},
                                 "max_retries": 3,
                                 "priority": "MEDIUM",
-                                "status": "PENDING", 
+                                "status": "PENDING",
                               })
     job = db_session.query(Job).filter(Job.id == response.json()["id"]).first()
     assert response.status_code == 200
     assert job is not None
-    #assert job.title == response["title"]
+
+def test_create_job_missing_title(db_session):
+    def override_get_db():
+             yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.post("/jobs",
+                    json={
+                            "job_type": "dummy",
+                            "payload": {},
+                            "max_retries": 3,
+                            "priority": "MEDIUM",
+                            "status": "PENDING",
+                        })
+    
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "title"]
+    assert response.json()["detail"][0]["type"] == "missing"
+
+
+def test_create_job_invalid_value(db_session):
+    def override_get_db():
+             yield db_session
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.post("/jobs",
+                    json={
+                            "title": "Test API Job",
+                            "job_type": "dummy",
+                            "payload": {},
+                            "max_retries": 3,
+                            "priority": "INVALID",
+                            "status": "PENDING",
+                        })
+    
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["type"] == "literal_error"
+    assert response.json()["detail"][0]["loc"] == ["body", "priority"]
 
 def test_find_job_by_id(db_session):
     def override_get_db():
            yield db_session
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
     app.dependency_overrides[get_db] = override_get_db
     response = client.post("/jobs",
                               json={
@@ -39,7 +119,7 @@ def test_find_job_by_id(db_session):
                                    "payload": {},
                                    "max_retries": 3,
                                    "priority": "MEDIUM",
-                                   "status": "PENDING", 
+                                   "status": "PENDING",
                                  })
 
     job_id = response.json()["id"]
@@ -65,7 +145,29 @@ def test_jobs_not_found(db_session):
 def test_jobs_found(db_session):
     def override_get_db():
            yield db_session
+
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
     app.dependency_overrides[get_db] = override_get_db
+
     response = client.post("/jobs",
                               json={
                                    "title": "Test API Job",
@@ -73,17 +175,38 @@ def test_jobs_found(db_session):
                                    "payload": {},
                                    "max_retries": 3,
                                    "priority": "MEDIUM",
-                                   "status": "PENDING", 
+                                   "status": "PENDING",
                                  })
-    response_getjobs = client.get("/jobs")
+    response_getjobs = client.get("/jobs",)
     jobs = response_getjobs.json()
     job_id = response.json()["id"]
+
     assert any(job["id"] == job_id for job in jobs)
     assert response_getjobs.status_code == 200
 
 def test_update_job(db_session):
     def override_get_db():
         yield db_session
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
     app.dependency_overrides[get_db] = override_get_db
     response = client.post("/jobs",
                               json={
@@ -92,7 +215,7 @@ def test_update_job(db_session):
                                    "payload": {},
                                    "max_retries": 3,
                                    "priority": "MEDIUM",
-                                   "status": "PENDING", 
+                                   "status": "PENDING",
                                  })
     job_id = response.json()["id"]
     update = client.put(f"/jobs/{job_id}",
@@ -107,34 +230,30 @@ def test_update_job(db_session):
     assert  update_job_id == preset_id
 
 
-def test_update_job_status(db_session):
+def test_update_job_no_payload(db_session):
     def override_get_db():
         yield db_session
-    app.dependency_overrides[get_db] = override_get_db
-    response = client.post("/jobs",
-                            json={
-                                "title": "Test API Job",
-                                "job_type": "dummy",
-                                "payload": {},
-                                "max_retries": 3,
-                                "priority": "MEDIUM",
-                                "status": "PENDING", 
-                            })
-    #update the created job status
-    job_id = response.json()["id"]
-    update_status = client.patch(f"/jobs/{job_id}/status",params={"status": "SUCCESS"})
-    
-    job = db_session.query(Job).filter(Job.id == job_id).first()
-    body = update_status.json()
+        
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
 
-    assert update_status.status_code == 200
-    assert job_id == job.id
-    assert job.status == "SUCCESS"
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
 
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
 
-def test_delete_job(db_session):
-    def override_get_db():
-        yield db_session
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
     app.dependency_overrides[get_db] = override_get_db
     response = client.post("/jobs",
                                 json={
@@ -143,9 +262,135 @@ def test_delete_job(db_session):
                                     "payload": {},
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
-                                    "status": "PENDING", 
+                                    "status": "PENDING",
+                                    })
+    job_id = response.json()["id"]
+    update = client.put(f"/jobs/{job_id}",
+                            json={
+                                "title" : "Test Update API job",
+                                "payload" : "not a payload"
+                            }
+                            )
+    job = db_session.query(Job).filter(Job.id == job_id).first()
+    update_job_id = job.id
+    preset_id = response.json()["id"]
+    assert update.status_code == 422
+    assert  update_job_id == preset_id
+
+def test_update_job_status(db_session):
+    def override_get_db():
+        yield db_session
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.post("/jobs",
+                            json={
+                                "title": "Test API Job",
+                                "job_type": "dummy",
+                                "payload": {},
+                                "max_retries": 3,
+                                "priority": "MEDIUM",
+                                "status": "PENDING",
+                            })
+    #update the created job status
+    job_id = response.json()["id"]
+    update_status = client.patch(f"/jobs/{job_id}/status",params={"status": "SUCCESS"})
+    
+    job = db_session.query(Job).filter(Job.id == job_id).first()
+
+    assert update_status.status_code == 200
+    assert job_id == job.id
+    assert job.status == "SUCCESS"
+
+def test_update_job_status_invalid(db_session):
+    def override_get_db():
+        yield db_session
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.post("/jobs",
+                            json={
+                                "title": "Test API Job",
+                                "job_type": "dummy",
+                                "payload": {},
+                                "max_retries": 3,
+                                "priority": "MEDIUM",
+                                "status": "PENDING",
+                            })
+    
+    job_id = response.json()["id"]
+    update_status = client.patch(f"/jobs/{job_id}/status", params={"status": "INVALID_STATUS"})
+    assert update_status.status_code == 422
+
+def test_delete_job(db_session):
+    def override_get_db():
+        yield db_session
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="dummy_hash",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    dummy_user = DummyUser(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        password_hash=user.password_hash,
+        created_at=user.created_at,
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: dummy_user
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.post("/jobs",
+                                json={
+                                    "title": "Test API Job",
+                                    "job_type": "dummy",
+                                    "payload": {},
+                                    "max_retries": 3,
+                                    "priority": "MEDIUM",
+                                    "status": "PENDING",
                                 })
-    #try and delete the job and see the returns
     job_id = response.json()["id"]
     delete = client.delete(f"/jobs/{job_id}")
     job = db_session.query(Job).filter(Job.id == job_id).first()
@@ -161,9 +406,31 @@ def test_delete_nonexistent_job(db_session):
     response = client.delete("/jobs/99999")
     assert response.status_code == 404
 
-def test_run_job_fail(db_session):
+
+
+def test_run_job_status_running(db_session):
         def override_get_db():
             yield db_session
+        user = User(
+            username="testuser",
+            email="test@example.com",
+            password_hash="dummy_hash",
+            created_at=datetime.now(timezone.utc),
+        )
+
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        dummy_user = DummyUser(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            password_hash=user.password_hash,
+            created_at=user.created_at,
+        )
+
+        app.dependency_overrides[get_current_user] = lambda: dummy_user
         app.dependency_overrides[get_db] = override_get_db
         response = client.post("/jobs",
                                 json={
@@ -172,7 +439,45 @@ def test_run_job_fail(db_session):
                                     "payload": {},
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
-                                    "status": "PENDING", 
+                                    "status": "RUNNING",
+                                })
+        job_id = response.json()["id"]
+        run_response = client.post(f"/jobs/{job_id}/run")
+        assert run_response.status_code == 400
+        assert run_response.json()["detail"] == "Job is already running"
+
+def test_run_job_fail(db_session):
+        def override_get_db():
+            yield db_session
+        user = User(
+            username="testuser",
+            email="test@example.com",
+            password_hash="dummy_hash",
+            created_at=datetime.now(timezone.utc),
+        )
+
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        dummy_user = DummyUser(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            password_hash=user.password_hash,
+            created_at=user.created_at,
+        )
+
+        app.dependency_overrides[get_current_user] = lambda: dummy_user
+        app.dependency_overrides[get_db] = override_get_db
+        response = client.post("/jobs",
+                                json={
+                                    "title": "Test API Job",
+                                    "job_type": "fail",
+                                    "payload": {},
+                                    "max_retries": 3,
+                                    "priority": "MEDIUM",
+                                    "status": "PENDING",
                                 })
         job_id = response.json()["id"]
         run_response = client.post(f"/jobs/{job_id}/run")
@@ -182,6 +487,26 @@ def test_run_job_fail(db_session):
 def test_run_job_success(db_session):
         def override_get_db():
             yield db_session
+        user = User(
+            username="testuser",
+            email="test@example.com",
+            password_hash="dummy_hash",
+            created_at=datetime.now(timezone.utc),
+        )
+
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        dummy_user = DummyUser(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            password_hash=user.password_hash,
+            created_at=user.created_at,
+        )
+
+        app.dependency_overrides[get_current_user] = lambda: dummy_user
         app.dependency_overrides[get_db] = override_get_db
         response = client.post("/jobs",
                                 json={
@@ -190,7 +515,7 @@ def test_run_job_success(db_session):
                                     "payload": {"directory": "/tmp/test", "days_old": 7},
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
-                                    "status": "PENDING", 
+                                    "status": "PENDING",
                                 })
         job_id = response.json()["id"]
         run_response = client.post(f"/jobs/{job_id}/run")
@@ -204,6 +529,26 @@ def test_run_job_success(db_session):
 def test_get_job_executions_byjobid(db_session):
         def override_get_db():
             yield db_session
+        user = User(
+            username="testuser",
+            email="test@example.com",
+            password_hash="dummy_hash",
+            created_at=datetime.now(timezone.utc),
+        )
+
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        dummy_user = DummyUser(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            password_hash=user.password_hash,
+            created_at=user.created_at,
+        )
+
+        app.dependency_overrides[get_current_user] = lambda: dummy_user
         app.dependency_overrides[get_db] = override_get_db
         response = client.post("/jobs",
                                 json={
@@ -212,10 +557,10 @@ def test_get_job_executions_byjobid(db_session):
                                     "payload": {"directory": "/tmp/test", "days_old": 7},
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
-                                    "status": "PENDING", 
+                                    "status": "PENDING",
                                 })
         job_id = response.json()["id"]
-        run_response = client.post(f"/jobs/{job_id}/run")
+        client.post(f"/jobs/{job_id}/run")
         executions_response = client.get(f"/jobs/{job_id}/executions")
 
         assert executions_response.status_code == 200
@@ -224,6 +569,26 @@ def test_get_job_executions_byjobid(db_session):
 def test_get_execution_logs_by_executionid(db_session):
         def override_get_db():
             yield db_session
+        user = User(
+            username="testuser",
+            email="test@example.com",
+            password_hash="dummy_hash",
+            created_at=datetime.now(timezone.utc),
+        )
+
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        dummy_user = DummyUser(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            password_hash=user.password_hash,
+            created_at=user.created_at,
+        )
+
+        app.dependency_overrides[get_current_user] = lambda: dummy_user
         app.dependency_overrides[get_db] = override_get_db
         response = client.post("/jobs",
                                 json={
@@ -232,16 +597,15 @@ def test_get_execution_logs_by_executionid(db_session):
                                     "payload": {"directory": "/tmp/test", "days_old": 7},
                                     "max_retries": 3,
                                     "priority": "MEDIUM",
-                                    "status": "PENDING", 
+                                    "status": "PENDING",
                                 })
         job_id = response.json()["id"]
-        run_response = client.post(f"/jobs/{job_id}/run")
+        client.post(f"/jobs/{job_id}/run")
         execution = (
              db_session.query(Execution).filter(Execution.job_id == job_id).first()
         )
         execution_id = execution.id
         logs_response = client.get(f"/executions/{execution_id}/logs")
-
         assert logs_response is not None
         assert logs_response.status_code == 200
 
@@ -258,9 +622,71 @@ def test_get_execution_logs_notexists(db_session):
         app.dependency_overrides[get_db] = override_get_db
         response = client.get("/executions/99999/logs")
         assert response.status_code == 404
+
 def test_get_execution_byid_notexists(db_session):
         def override_get_db():
             yield db_session
         app.dependency_overrides[get_db] = override_get_db
         response = client.get("/executions/99999")
         assert response.status_code == 404
+
+
+def test_get_jobs_return_current_user_job(db_session):
+            def override_get_db():
+                    yield db_session
+            user = User(
+                 username="testuser",
+                 email="test@example.com",
+                 password_hash="dummy_hash",
+                 created_at=datetime.now(timezone.utc),
+             )
+
+            user2 = User(
+                 username="testuser2",
+                 email="test@example2.com",
+                 password_hash="dummy_hash2",
+                 created_at=datetime.now(timezone.utc),
+             )
+            db_session.add_all([user,user2])
+            db_session.commit()
+            db_session.refresh(user)
+            db_session.refresh(user2)
+
+            job1 = Job(
+                title="User 1 Job",
+                job_type="dummy",
+                payload={},
+                user_id=user.id,
+            )
+
+            job2 = Job(
+                title="User 2 Job",
+                job_type="dummy",
+                payload={},
+                user_id=user2.id,
+            )
+
+            db_session.add_all([job1, job2])
+            db_session.commit()
+
+            app.dependency_overrides[get_db] = override_get_db
+            app.dependency_overrides[get_current_user] = lambda: user
+            
+            response_getjobs = client.get("/jobs")
+            jobs = response_getjobs.json()
+
+            assert response_getjobs.status_code == 200
+            assert len(jobs) == 1
+            assert jobs[0]["title"] == "User 1 Job"
+            app.dependency_overrides.clear()
+
+def test_get_jobs_without_authentication():
+    response = client.get("/jobs")
+    assert response.status_code == 401
+
+def test_get_jobs_with_invalid_token():
+    response = client.get(
+        "/jobs",
+        headers={"Authorization": "Bearer invalid-token"}
+        )
+    assert response.status_code == 401

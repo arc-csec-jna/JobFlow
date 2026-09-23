@@ -1,7 +1,10 @@
-from app.core.database import Base
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime,Text
 from datetime import datetime
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+from app.core.database import Base
+
 
 class Log(Base):
     __tablename__ = "logs"

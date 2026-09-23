@@ -1,5 +1,6 @@
-from app.tasks.registry import TASK_REGISTRY
 from app.contracts.execution_result import ExecutionResult
+from app.tasks.registry import TASK_REGISTRY
+
 
 class PythonExecutor:
     def execute(self, job):

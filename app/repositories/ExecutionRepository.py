@@ -1,5 +1,6 @@
 from app.models.execution import Execution
 
+
 class ExecutionRepository: 
     def __init__(self, db):
         self.db = db

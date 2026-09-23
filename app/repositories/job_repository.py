@@ -1,11 +1,16 @@
 from app.models.job import Job
 
+
 class JobRepository:
     def __init__(self, db):
         self.db = db
         
-    def get_jobs(self):
-        return self.db.query(Job).all()
+    def get_jobs(self,user_id):
+        return (
+            self.db.query(Job)
+            .filter(Job.user_id == user_id)
+            .all()
+        )
     
     def get_job_by_id(self, job_id):
         return self.db.query(Job).filter(Job.id == job_id).first()
