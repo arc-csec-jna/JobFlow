@@ -622,6 +622,7 @@ def test_get_execution_logs_notexists(db_session):
         app.dependency_overrides[get_db] = override_get_db
         response = client.get("/executions/99999/logs")
         assert response.status_code == 404
+
 def test_get_execution_byid_notexists(db_session):
         def override_get_db():
             yield db_session
@@ -677,4 +678,15 @@ def test_get_jobs_return_current_user_job(db_session):
             assert response_getjobs.status_code == 200
             assert len(jobs) == 1
             assert jobs[0]["title"] == "User 1 Job"
+            app.dependency_overrides.clear()
 
+def test_get_jobs_without_authentication():
+    response = client.get("/jobs")
+    assert response.status_code == 401
+
+def test_get_jobs_with_invalid_token():
+    response = client.get(
+        "/jobs",
+        headers={"Authorization": "Bearer invalid-token"}
+        )
+    assert response.status_code == 401

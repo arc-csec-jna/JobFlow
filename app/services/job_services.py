@@ -13,7 +13,9 @@ from app.repositories.ExecutionRepository import ExecutionRepository
 from app.repositories.job_repository import JobRepository
 from app.repositories.log_repository import LogRepository
 from app.schemas.job import JobCreate
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ExecutionContext:
     def __init__(
@@ -143,15 +145,19 @@ class JobService:
     
 
 # ===================================================================================================================
+
 #ORCHESTRATION SERVICE
     def run_job(self, job_id, user_id, trigger = "MANUAL"):
 
         exec_ctx = self._prepare_execution(job_id, user_id,trigger)
+        logger.info("Execution started")
         exec_ctx.execution_result = self._execute_task(exec_ctx)
         if exec_ctx.execution_result.status == "SUCCESS":
             self._handle_success(exec_ctx)
+            logger.info("Execution Succeeded")
         else:
             self._handle_failure(exec_ctx, exec_ctx.execution_result.message)
+            logger.warning("Execution Failed")
   
     def _complete_execution(
         self,
@@ -226,6 +232,7 @@ class JobService:
                 self.job_repository.update_retry_count(ctx.job.id,ctx.job.retry_count)
                 self.job_repository.update_next_run_at(ctx.job.id,next_run)
                 ctx.job.next_run_at = next_run  
+                logger.warning("Retry Scheduled")
             return {
                         "message": f"Job {ctx.job.id} execution FAILED retry active.",
                         "execution_id": ctx.execution_record.id,
@@ -235,6 +242,7 @@ class JobService:
             ctx.job.enabled = False
             jobdata = {"status":  ctx.job.status,"enabled":ctx.job.enabled,}
             self.job_repository.update_job(ctx.job.id,jobdata)
+            logger.warning("Retry Limit reached -  Failure")
             return {
                     "message": f"Job {ctx.job.id} execution permanent Failure.",
                     "execution_id": ctx.execution_record.id,

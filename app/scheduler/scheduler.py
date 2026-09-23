@@ -15,5 +15,4 @@ retry_policy = RetryPolicy()
 job_service = JobService(job_repository=job_repository, execution_repository=execution_repository, log_repository=log_repository,retry_policy=retry_policy)
 sch_service = SchedulerService(job_repository,job_service)
 sch_service.start_scheduler()
-#poll available jobs
-#send data to dispatcher
+

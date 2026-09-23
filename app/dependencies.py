@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.executors.python_executor import PythonExecutor
@@ -13,6 +13,9 @@ from app.services.retry_policy import RetryPolicy
 from app.security.token import decode_access_token
 from app.core.config import settings
 from app.security.oauth2 import oauth2_scheme
+
+
+import jwt
 
 def get_job_service(db: Session = Depends(get_db)):
     job_repository = JobRepository(db)
@@ -30,10 +33,11 @@ def get_current_user(
                 auth:str = Depends(oauth2_scheme),
                 db:Session = Depends(get_db)
                 ):
-    payload = decode_access_token(auth,settings.JWT_SECRET)
-    user_id = payload["user_id"]
-
-    user_repository = UserRepository(db)
-    user = user_repository.get_user_by_id(user_id)
-
-    return user
+    try:
+        payload = decode_access_token(auth,settings.JWT_SECRET)
+        user_id = payload["user_id"]
+        user_repository = UserRepository(db)
+        user = user_repository.get_user_by_id(user_id)
+        return user
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")

@@ -7,6 +7,9 @@ from app.repositories.job_repository import JobRepository
 from app.services.job_services import JobService
 from app.workers import worker
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SchedulerService:
     def __init__(self, job_repository: JobRepository,job_service:JobService,dispatcher=None):
@@ -41,14 +44,17 @@ class SchedulerService:
                     f"Found: {stats['jobs_found']} | "
                     f"Submitted: {stats['jobs_executed']}"
                     )
+                logger.info("Scheduler Started")
                 time.sleep(settings.SCHEDULER_POLL_INTERVAL)
         except KeyboardInterrupt:
             self.shutdown()
         finally:
             self.dispatcher.shutdown(wait=True)
-            print("SCheduler stopped")
+            print("Scheduler stopped")
+            logger.info("Scheduler stopped")
 
     def shutdown(self):
         print("Shutdown Requested")
+        logger.info("Scheduler Shutdown")
         self.shutdown_requested = True
  
